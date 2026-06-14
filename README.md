@@ -289,7 +289,9 @@ The `publish` GitHub Actions workflow runs when a GitHub Release is published. I
 - `x86_64-apple-darwin`
 - `aarch64-apple-darwin`
 
-The workflow uploads the standalone CLI binaries plus `SHA256SUMS.txt` to the same GitHub Release, publishes wheels to PyPI, and can update Homebrew, WinGet, and Launchpad PPA when the related secrets and variables are configured. See `packaging/homebrew`, `packaging/winget`, and `packaging/ppa` for the required CI configuration.
+The workflow uploads the standalone CLI binaries plus `SHA256SUMS.txt` to the same GitHub Release and publishes wheels to PyPI. After that, it updates `packaging/winget` metadata on the default branch; that metadata commit triggers the `publish-winget` workflow, which submits the WinGet update with WingetCreate.
+
+WinGet automation requires `PACKAGING_METADATA_TOKEN` to be a PAT or GitHub App token that can push to this repository and trigger workflows. It also requires `WINGET_CREATE_GITHUB_TOKEN` for WingetCreate submission. Set `WINGET_RELEASE_REPOSITORY` only if the GitHub Release assets live in a different repository than the one already recorded in `packaging/winget`.
 
 ---
 

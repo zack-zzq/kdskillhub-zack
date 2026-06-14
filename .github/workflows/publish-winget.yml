@@ -1,0 +1,119 @@
+name: publish-winget
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packaging/winget/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-winget-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  submit-winget:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check WinGet configuration
+        id: winget-config
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_CREATE_GITHUB_TOKEN)) {
+            Write-Host "::notice::Skipping WinGet publish because WINGET_CREATE_GITHUB_TOKEN is not configured."
+            "enabled=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 0
+          }
+
+          "enabled=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+
+      - name: Read WinGet metadata
+        if: steps.winget-config.outputs.enabled == 'true'
+        id: winget-metadata
+        shell: pwsh
+        run: |
+          function Read-Scalar {
+            param(
+              [Parameter(Mandatory = $true)][string]$Path,
+              [Parameter(Mandatory = $true)][string]$Key
+            )
+
+            $content = Get-Content -Raw -Encoding UTF8 $Path
+            $match = [regex]::Match($content, "(?m)^$([regex]::Escape($Key)):\s*(.+?)\s*$")
+            if (-not $match.Success) {
+              throw "$Path is missing $Key"
+            }
+
+            return $match.Groups[1].Value.Trim()
+          }
+
+          $versionManifest = "packaging\winget\ZackZhu.SkillMux.yaml"
+          $localeManifest = "packaging\winget\ZackZhu.SkillMux.locale.en-US.yaml"
+          $installerManifest = "packaging\winget\ZackZhu.SkillMux.installer.yaml"
+
+          $packageId = Read-Scalar -Path $versionManifest -Key "PackageIdentifier"
+          if (-not [string]::IsNullOrWhiteSpace($env:WINGET_PACKAGE_IDENTIFIER)) {
+            $packageId = $env:WINGET_PACKAGE_IDENTIFIER
+          }
+
+          $version = Read-Scalar -Path $versionManifest -Key "PackageVersion"
+          $releaseNotesUrl = Read-Scalar -Path $localeManifest -Key "ReleaseNotesUrl"
+          $installer = Get-Content -Raw -Encoding UTF8 $installerManifest
+          $x64Match = [regex]::Match($installer, "(?ms)Architecture:\s*x64\b.*?InstallerUrl:\s*(\S+)")
+          $arm64Match = [regex]::Match($installer, "(?ms)Architecture:\s*arm64\b.*?InstallerUrl:\s*(\S+)")
+
+          if (-not $x64Match.Success) {
+            throw "$installerManifest is missing the x64 installer URL"
+          }
+          if (-not $arm64Match.Success) {
+            throw "$installerManifest is missing the arm64 installer URL"
+          }
+
+          "package_id=$packageId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "release_notes_url=$releaseNotesUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "x64_url=$($x64Match.Groups[1].Value)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "arm64_url=$($arm64Match.Groups[1].Value)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        env:
+          WINGET_PACKAGE_IDENTIFIER: ${{ vars.WINGET_PACKAGE_IDENTIFIER }}
+
+      - name: Install .NET runtime for wingetcreate
+        if: steps.winget-config.outputs.enabled == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
+
+      - name: Download wingetcreate
+        if: steps.winget-config.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Submit WinGet update
+        if: steps.winget-config.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $packageId = "${{ steps.winget-metadata.outputs.package_id }}"
+          $version = "${{ steps.winget-metadata.outputs.version }}"
+          $releaseNotesUrl = "${{ steps.winget-metadata.outputs.release_notes_url }}"
+          $x64Url = "${{ steps.winget-metadata.outputs.x64_url }}"
+          $arm64Url = "${{ steps.winget-metadata.outputs.arm64_url }}"
+
+          .\wingetcreate.exe update $packageId `
+            --urls "$x64Url|x64" "$arm64Url|arm64" `
+            --version $version `
+            --release-notes-url $releaseNotesUrl `
+            --prtitle "Update $packageId to $version" `
+            --submit `
+            --no-open
+        env:
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}

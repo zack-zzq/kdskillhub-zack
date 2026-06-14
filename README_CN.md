@@ -285,7 +285,9 @@ PowerShell：
 - `x86_64-apple-darwin`
 - `aarch64-apple-darwin`
 
-workflow 会把独立 CLI 可执行文件和 `SHA256SUMS.txt` 上传到同一个 GitHub Release 附件中，并发布 PyPI wheel；配置对应的 Secrets/Variables 后，还会自动更新 Homebrew、WinGet 和 Launchpad PPA。具体配置见 `packaging/homebrew`、`packaging/winget`、`packaging/ppa`。
+workflow 会把独立 CLI 可执行文件和 `SHA256SUMS.txt` 上传到同一个 GitHub Release 附件中，并发布 PyPI wheel。随后它会更新默认分支上的 `packaging/winget` 元数据；这个元数据提交会触发 `publish-winget` 子流程，再由 WingetCreate 提交 WinGet 更新。
+
+WinGet 自动化需要配置 `PACKAGING_METADATA_TOKEN`，它必须是能推送本仓库并触发 workflow 的 PAT 或 GitHub App token；还需要配置 `WINGET_CREATE_GITHUB_TOKEN` 供 WingetCreate 提交使用。只有当 GitHub Release 附件所在仓库不同于 `packaging/winget` 已记录的仓库时，才需要设置 `WINGET_RELEASE_REPOSITORY`。
 
 ---
 

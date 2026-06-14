@@ -3,6 +3,7 @@
 PackageIdentifier: ZackZhu.SkillMux
 PackageVersion: 3.2.3
 InstallerType: portable
+UpgradeBehavior: uninstallPrevious
 Commands:
   - skillmux
 
@@ -10,12 +11,10 @@ Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/zack-zzq/skillmux/releases/download/v3.2.3/skillmux-3.2.3-x86_64-pc-windows-msvc.exe
     InstallerSha256: BB73C7A07A43C0B34E6D3D3A7B8907861CD2804B2FE134BD2B71AEFF375E4B7F
-    UpgradeBehavior: uninstallPrevious
 
   - Architecture: arm64
     InstallerUrl: https://github.com/zack-zzq/skillmux/releases/download/v3.2.3/skillmux-3.2.3-aarch64-pc-windows-msvc.exe
     InstallerSha256: E1A629346B0A4DD1AF4FAEF6A6EB878F8730A1A201F5E12F7A7E602BD9D2442B
-    UpgradeBehavior: uninstallPrevious
 
 ManifestType: installer
 ManifestVersion: 1.10.0
