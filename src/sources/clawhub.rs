@@ -50,8 +50,8 @@ impl ClawHubSource {
 
         let version = extract_version(v);
 
-        let description = first_string(v, &["description", "summary", "shortDescription"])
-            .or_else(|| {
+        let description =
+            first_string(v, &["description", "summary", "shortDescription"]).or_else(|| {
                 v.get("skill").and_then(|skill| {
                     first_string(skill, &["description", "summary", "shortDescription"])
                 })
@@ -114,9 +114,7 @@ impl SkillSource for ClawHubSource {
 
         Ok(arr
             .into_iter()
-            .filter_map(|x| {
-                extract_version(&x).map(|version| RemoteSkillVersion { version })
-            })
+            .filter_map(|x| extract_version(&x).map(|version| RemoteSkillVersion { version }))
             .collect())
     }
 
@@ -163,7 +161,12 @@ impl SkillSource for ClawHubSource {
         for p in paths {
             let url = format!("{}/api/v1/skills/{}/{}", self.base, slug, p);
 
-            let Ok(resp) = self.client.get(&url).header(ACCEPT, "application/json").send() else {
+            let Ok(resp) = self
+                .client
+                .get(&url)
+                .header(ACCEPT, "application/json")
+                .send()
+            else {
                 continue;
             };
 
@@ -195,20 +198,18 @@ fn first_string(v: &Value, keys: &[&str]) -> Option<String> {
 fn extract_version(v: &Value) -> Option<String> {
     first_string(v, &["version", "tag"])
         .or_else(|| {
-            v.get("latestVersion")
-                .and_then(|x| {
-                    x.as_str()
-                        .map(|s| s.to_string())
-                        .or_else(|| first_string(x, &["version", "tag", "name"]))
-                })
+            v.get("latestVersion").and_then(|x| {
+                x.as_str()
+                    .map(|s| s.to_string())
+                    .or_else(|| first_string(x, &["version", "tag", "name"]))
+            })
         })
         .or_else(|| {
-            v.get("latest")
-                .and_then(|x| {
-                    x.as_str()
-                        .map(|s| s.to_string())
-                        .or_else(|| first_string(x, &["version", "tag", "name"]))
-                })
+            v.get("latest").and_then(|x| {
+                x.as_str()
+                    .map(|s| s.to_string())
+                    .or_else(|| first_string(x, &["version", "tag", "name"]))
+            })
         })
 }
 
@@ -282,11 +283,7 @@ fn preview_bytes(bytes: &[u8], max_len: usize) -> String {
 }
 
 fn preview_text(text: &str, max_len: usize) -> String {
-    let one_line = text
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .trim()
-        .to_string();
+    let one_line = text.replace(['\r', '\n'], " ").trim().to_string();
 
     if one_line.is_empty() {
         return "<non-text response>".to_string();

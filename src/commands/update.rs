@@ -35,7 +35,9 @@ pub fn run(
         return Ok(());
     }
 
-    let requested = skill.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let requested = skill
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
     let update_all = all || requested.is_none();
 
     let selected: Vec<_> = if update_all {

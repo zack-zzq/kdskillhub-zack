@@ -128,7 +128,9 @@ pub fn validate_skill_name(name: &str) -> Result<()> {
     }
 
     if trimmed.contains('/') || trimmed.contains('\\') {
-        return Err(anyhow!("skill name must not contain path separators: {name}"));
+        return Err(anyhow!(
+            "skill name must not contain path separators: {name}"
+        ));
     }
 
     if trimmed.chars().any(char::is_whitespace) {

@@ -250,10 +250,11 @@ skillmux list --json
 cargo build
 ```
 
-### 格式化与检查
+### 格式、静态检查与测试
 ```bash
-cargo fmt
-cargo check
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets
 ```
 
 ### 发布
