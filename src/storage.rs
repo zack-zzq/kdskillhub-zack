@@ -53,6 +53,10 @@ impl SkillStorage {
             return Ok(false);
         }
 
+        if !self.installed(n) {
+            return Ok(false);
+        }
+
         if p.is_file() || p.is_symlink() {
             fs::remove_file(&p)?;
         } else {
@@ -166,5 +170,53 @@ mod tests {
         let storage = SkillStorage::new(path);
 
         assert!(storage.list().is_err());
+    }
+
+    #[test]
+    fn remove_preserves_unmanaged_directory() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let storage = SkillStorage::new(tmp.path().join("skills"));
+        let path = storage.skill_path("notes");
+        fs::create_dir_all(&path).expect("create directory");
+        fs::write(path.join("README.md"), "keep me").expect("write file");
+
+        assert!(!storage.remove("notes").expect("remove"));
+        assert!(path.join("README.md").exists());
+    }
+
+    #[test]
+    fn remove_preserves_unmanaged_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let storage = SkillStorage::new(tmp.path().join("skills"));
+        let path = storage.skill_path("notes");
+        fs::create_dir_all(&storage.base).expect("create storage");
+        fs::write(&path, "keep me").expect("write file");
+
+        assert!(!storage.remove("notes").expect("remove"));
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn remove_deletes_manual_skill() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let storage = SkillStorage::new(tmp.path().join("skills"));
+        let path = storage.skill_path("demo");
+        fs::create_dir_all(&path).expect("create skill");
+        fs::write(path.join("SKILL.md"), "# Demo").expect("write manifest");
+
+        assert!(storage.remove("demo").expect("remove"));
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn remove_deletes_managed_skill() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let storage = SkillStorage::new(tmp.path().join("skills"));
+        let path = storage.skill_path("demo");
+        fs::create_dir_all(path.join(".skillhub")).expect("create metadata directory");
+        fs::write(path.join(".skillhub/info.json"), "{}").expect("write metadata");
+
+        assert!(storage.remove("demo").expect("remove"));
+        assert!(!path.exists());
     }
 }
