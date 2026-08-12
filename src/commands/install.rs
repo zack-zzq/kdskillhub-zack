@@ -168,6 +168,7 @@ pub fn run_silent(
                 "owner": gh.owner,
                 "repo": gh.repo,
                 "ref": gh.r#ref,
+                "subdir": gh.subdir,
                 "commit": sync.commit
             }
         });
