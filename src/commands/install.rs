@@ -195,7 +195,9 @@ pub fn run_silent(
     s.pre_install_check(&slug)?;
 
     let resolved = s.resolve(&slug)?;
-    let v = ver.or(resolved.version.clone()).unwrap_or_else(|| "latest".into());
+    let v = ver
+        .or(resolved.version.clone())
+        .unwrap_or_else(|| "latest".into());
 
     let zip = s.download(&slug, Some(&v))?;
 
@@ -507,8 +509,8 @@ fn extract_zip_safely(bytes: &[u8], dest: &Path) -> Result<()> {
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
         let name = file.name().to_string();
-        let rel = safe_relative_path(&name)
-            .ok_or_else(|| anyhow!("unsafe ZIP entry path: {name}"))?;
+        let rel =
+            safe_relative_path(&name).ok_or_else(|| anyhow!("unsafe ZIP entry path: {name}"))?;
         let outpath = dest.join(rel);
 
         if zip_entry_is_symlink(file.unix_mode()) {

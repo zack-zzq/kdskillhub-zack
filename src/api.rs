@@ -25,8 +25,7 @@ impl ApiClient {
         })
     }
     pub fn default_token() -> String {
-        String::from_utf8(TOKEN_DATA.iter().map(|b| b ^ TOKEN_KEY).collect())
-            .unwrap_or_default()
+        String::from_utf8(TOKEN_DATA.iter().map(|b| b ^ TOKEN_KEY).collect()).unwrap_or_default()
     }
     pub fn search(&self, keyword: Option<String>, page: u32, page_size: u32) -> Result<Value> {
         let mut req = self

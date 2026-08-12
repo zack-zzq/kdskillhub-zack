@@ -49,9 +49,9 @@ fn is_safe_repo_segment(value: &str) -> bool {
     !value.is_empty()
         && value != "."
         && value != ".."
-        && value.chars().all(|c| {
-            c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')
-        })
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
 }
 
 fn sanitize_cache_segment(value: &str) -> String {
@@ -113,7 +113,13 @@ mod tests {
 
     #[test]
     fn cache_key_sanitizes_ref() {
-        assert_eq!(super::cache_key("owner", "repo", "feature/x"), "owner/repo/feature_x");
-        assert_eq!(super::cache_key("owner", "repo", "..\\x"), "owner/repo/.._x");
+        assert_eq!(
+            super::cache_key("owner", "repo", "feature/x"),
+            "owner/repo/feature_x"
+        );
+        assert_eq!(
+            super::cache_key("owner", "repo", "..\\x"),
+            "owner/repo/.._x"
+        );
     }
 }

@@ -15,7 +15,12 @@ pub fn run(
     page: u32,
     json: bool,
 ) -> Result<()> {
-    if keyword.as_deref().map(str::trim).unwrap_or_default().is_empty() {
+    if keyword
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or_default()
+        .is_empty()
+    {
         return Err(anyhow!(
             "search requires a keyword. Usage: skillmux search <keyword>"
         ));

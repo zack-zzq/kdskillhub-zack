@@ -113,7 +113,10 @@ fn add_targets(cfg: &mut Config, targets: &[String]) -> Result<()> {
     } else {
         cfg.save()?;
         println!("Added install targets: {}", added.join(", "));
-        println!("Current install targets: {}", cfg.install.targets.join(", "));
+        println!(
+            "Current install targets: {}",
+            cfg.install.targets.join(", ")
+        );
     }
 
     Ok(())
@@ -123,7 +126,9 @@ fn remove_targets(cfg: &mut Config, targets: &[String]) -> Result<()> {
     let targets = parse_targets_args(targets)?;
     let before = cfg.install.targets.clone();
 
-    cfg.install.targets.retain(|target| !targets.contains(target));
+    cfg.install
+        .targets
+        .retain(|target| !targets.contains(target));
 
     let removed: Vec<_> = before
         .into_iter()
@@ -138,7 +143,10 @@ fn remove_targets(cfg: &mut Config, targets: &[String]) -> Result<()> {
     } else {
         cfg.save()?;
         println!("Removed install targets: {}", removed.join(", "));
-        println!("Current install targets: {}", cfg.install.targets.join(", "));
+        println!(
+            "Current install targets: {}",
+            cfg.install.targets.join(", ")
+        );
     }
 
     Ok(())

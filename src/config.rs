@@ -73,9 +73,8 @@ impl Config {
     pub fn load(custom: Option<&str>) -> Result<Self> {
         let path = config_path(custom)?;
         if let Some(p) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-            fs::create_dir_all(p).with_context(|| {
-                format!("failed to create config directory {}", p.display())
-            })?;
+            fs::create_dir_all(p)
+                .with_context(|| format!("failed to create config directory {}", p.display()))?;
         }
         let mut c = Self {
             path: path.clone(),
