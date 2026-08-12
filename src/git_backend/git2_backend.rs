@@ -90,32 +90,51 @@ fn fetch_repo(repo: &Repository, url: &str) -> Result<()> {
 
 fn resolve_ref(repo: &Repository, ref_name: &str) -> Result<Oid> {
     if ref_name == "HEAD" {
-        return repo
-            .head()
-            .and_then(|h| h.peel_to_commit())
-            .map(|c| c.id())
-            .map_err(map_git2_err);
+        return resolve_commit(repo, "refs/remotes/origin/HEAD")
+            .or_else(|| {
+                repo.head()
+                    .ok()?
+                    .peel_to_commit()
+                    .ok()
+                    .map(|commit| commit.id())
+            })
+            .ok_or_else(|| anyhow!(GitSyncError::RefNotFound(ref_name.to_string())));
     }
 
     if let Ok(oid) = Oid::from_str(ref_name) {
-        if repo.find_object(oid, None).is_ok() {
+        if let Ok(object) = repo.find_object(oid, None) {
+            if let Ok(commit) = object.peel_to_commit() {
+                return Ok(commit.id());
+            }
+        }
+    }
+
+    let candidates = if ref_name.starts_with("refs/") {
+        vec![ref_name.to_string()]
+    } else {
+        vec![
+            format!("refs/remotes/origin/{ref_name}"),
+            format!("refs/tags/{ref_name}"),
+            format!("refs/heads/{ref_name}"),
+            ref_name.to_string(),
+        ]
+    };
+
+    for cand in candidates {
+        if let Some(oid) = resolve_commit(repo, &cand) {
             return Ok(oid);
         }
     }
 
-    let candidates = [
-        ref_name.to_string(),
-        format!("refs/heads/{ref_name}"),
-        format!("refs/tags/{ref_name}"),
-        format!("refs/remotes/origin/{ref_name}"),
-    ];
-    for cand in candidates {
-        if let Ok(obj) = repo.revparse_single(&cand) {
-            return Ok(obj.id());
-        }
-    }
-
     Err(anyhow!(GitSyncError::RefNotFound(ref_name.to_string())))
+}
+
+fn resolve_commit(repo: &Repository, ref_name: &str) -> Option<Oid> {
+    repo.revparse_single(ref_name)
+        .ok()?
+        .peel_to_commit()
+        .ok()
+        .map(|commit| commit.id())
 }
 
 fn checkout_commit(repo: &Repository, oid: Oid, ref_name: &str) -> Result<()> {
@@ -197,10 +216,16 @@ mod tests {
         let c = repo.find_commit(oid).expect("find commit");
         repo.tag_lightweight("v1", c.as_object(), false)
             .expect("tag");
+        let sig = git2::Signature::now("t", "t@t.com").expect("sig");
+        let annotated_tag = repo
+            .tag("v2", c.as_object(), &sig, "annotated", false)
+            .expect("annotated tag");
 
         assert_eq!(resolve_ref(&repo, "HEAD").expect("head"), oid);
         assert_eq!(resolve_ref(&repo, "master").expect("master"), oid);
         assert_eq!(resolve_ref(&repo, "v1").expect("tag"), oid);
+        assert_ne!(annotated_tag, oid);
+        assert_eq!(resolve_ref(&repo, "v2").expect("annotated tag"), oid);
         assert_eq!(resolve_ref(&repo, &oid.to_string()).expect("oid"), oid);
     }
 
@@ -214,7 +239,7 @@ mod tests {
         let src_dir = tempfile::tempdir().expect("src tempdir");
         let src = Repository::init(src_dir.path()).expect("init src");
         src.set_head("refs/heads/master").expect("set master");
-        let _first = commit_file(&src, src_dir.path(), "SKILL.md", "# demo", "first");
+        let first = commit_file(&src, src_dir.path(), "SKILL.md", "# demo", "first");
         let mut r = src
             .remote("origin", remote_bare.to_str().expect("path str"))
             .expect("remote add");
@@ -225,14 +250,18 @@ mod tests {
         let repo_cache = cache_dir.path().join("repo");
         let url = remote_bare.to_string_lossy().to_string();
         let first_sync = sync(&url, &repo_cache, Some("HEAD")).expect("first sync");
-        assert!(!first_sync.commit.is_empty());
+        assert_eq!(first_sync.commit, first.to_string());
 
-        let _second = commit_file(&src, src_dir.path(), "README.md", "hi", "second");
+        let second = commit_file(&src, src_dir.path(), "README.md", "hi", "second");
         let mut r2 = src.find_remote("origin").expect("origin");
         r2.push(&["refs/heads/master:refs/heads/master"], None)
             .expect("push 2");
 
         let second_sync = sync(&url, &repo_cache, Some("HEAD")).expect("second sync");
-        assert!(!second_sync.commit.is_empty());
+        assert_ne!(second_sync.commit, first.to_string());
+        assert_eq!(second_sync.commit, second.to_string());
+
+        let branch_sync = sync(&url, &repo_cache, Some("master")).expect("branch sync");
+        assert_eq!(branch_sync.commit, second.to_string());
     }
 }
